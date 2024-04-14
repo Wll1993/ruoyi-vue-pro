@@ -7,6 +7,7 @@ import cn.iocoder.yudao.framework.common.pojo.CommonResult;
 import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
 import cn.iocoder.yudao.framework.common.util.servlet.ServletUtils;
+import cn.iocoder.yudao.module.infra.framework.file.core.utils.FileTypeUtils;
 import cn.iocoder.yudao.module.infra.controller.admin.file.vo.file.*;
 import cn.iocoder.yudao.module.infra.dal.dataobject.file.FileDO;
 import cn.iocoder.yudao.module.infra.service.file.FileService;
@@ -88,6 +89,13 @@ public class FileController {
             log.warn("[getFileContent][configId({}) path({}) 文件不存在]", configId, path);
             response.setStatus(HttpStatus.NOT_FOUND.value());
             return;
+        }
+        String type = FileTypeUtils.getMineType(content, path);
+        if (StrUtil.containsIgnoreCase(type, "video")) {
+            // 解决视频播放兼容性问题
+            response.setHeader("Content-Length", String.valueOf(content.length - 1));
+            response.setHeader("Content-Range", String.valueOf(content.length - 1));
+            response.setHeader("Accept-Ranges", "bytes");
         }
         ServletUtils.writeAttachment(response, path, content);
     }
