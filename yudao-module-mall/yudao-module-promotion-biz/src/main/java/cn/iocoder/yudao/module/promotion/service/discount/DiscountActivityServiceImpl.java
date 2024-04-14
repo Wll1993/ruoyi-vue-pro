@@ -53,7 +53,9 @@ public class DiscountActivityServiceImpl implements DiscountActivityService {
         return matchDiscountProductList;
     }
 
+
     @Override
+    @Transactional
     public Long createDiscountActivity(DiscountActivityCreateReqVO createReqVO) {
         // 校验商品是否冲突
         validateDiscountActivityProductConflicts(null, createReqVO.getProducts());
@@ -65,8 +67,16 @@ public class DiscountActivityServiceImpl implements DiscountActivityService {
         discountActivityMapper.insert(discountActivity);
         // 插入商品
         // TODO @zhangshuai：activityStatus 最好代码里，也做下设置噢。
-        List<DiscountProductDO> discountProducts = convertList(createReqVO.getProducts(),
-                product -> DiscountActivityConvert.INSTANCE.convert(product).setActivityId(discountActivity.getId()));
+        
+        // TODO @bumianri: 是不是使用 CollectionUtils.convertMap 来处理好一些呀？最后放 DiscountActivityConvert 里
+         List<DiscountProductDO> discountProducts = createReqVO.getProducts().stream().map(product -> {
+            DiscountProductDO discountProductDO = new DiscountProductDO();
+            BeanUtils.copyProperties(product, discountProductDO);
+            discountProductDO.setActivityStartTime(createReqVO.getStartTime());
+            discountProductDO.setActivityEndTime(createReqVO.getEndTime());
+            discountProductDO.setActivityId(discountActivity.getId());
+            return discountProductDO;
+        }).collect(Collectors.toList());
         discountProductMapper.insertBatch(discountProducts);
         // 返回
         return discountActivity.getId();
