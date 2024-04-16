@@ -130,6 +130,11 @@
             <artifactId>tika-core</artifactId> <!-- 文件客户端：文件类型的识别 -->
         </dependency>
 
+        <!-- 制作假SQL数据 -->
+        <dependency>
+            <groupId>net.datafaker</groupId>
+            <artifactId>datafaker</artifactId>
+        </dependency>
     </dependencies>
 
 </project>

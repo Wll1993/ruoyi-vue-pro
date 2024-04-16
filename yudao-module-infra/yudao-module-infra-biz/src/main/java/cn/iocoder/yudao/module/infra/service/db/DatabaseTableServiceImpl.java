@@ -4,6 +4,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.StrUtil;
 import cn.iocoder.yudao.module.infra.dal.dataobject.db.DataSourceConfigDO;
+import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.generator.config.DataSourceConfig;
 import com.baomidou.mybatisplus.generator.config.GlobalConfig;
 import com.baomidou.mybatisplus.generator.config.StrategyConfig;
@@ -42,13 +43,8 @@ public class DatabaseTableServiceImpl implements DatabaseTableService {
     }
 
     private List<TableInfo> getTableList0(Long dataSourceConfigId, String name) {
-        // 获得数据源配置
-        DataSourceConfigDO config = dataSourceConfigService.getDataSourceConfig(dataSourceConfigId);
-        Assert.notNull(config, "数据源({}) 不存在！", dataSourceConfigId);
-
         // 使用 MyBatis Plus Generator 解析表结构
-        DataSourceConfig dataSourceConfig = new DataSourceConfig.Builder(config.getUrl(), config.getUsername(),
-                config.getPassword()).build();
+        DataSourceConfig dataSourceConfig = getConfig(dataSourceConfigId);
         StrategyConfig.Builder strategyConfig = new StrategyConfig.Builder();
         if (StrUtil.isNotEmpty(name)) {
             strategyConfig.addInclude(name);
@@ -64,6 +60,22 @@ public class DatabaseTableServiceImpl implements DatabaseTableService {
         List<TableInfo> tables = builder.getTableInfoList();
         tables.sort(Comparator.comparing(TableInfo::getName));
         return tables;
+    }
+
+    private DataSourceConfig getConfig(Long dataSourceConfigId) {
+        // 获得数据源配置
+        DataSourceConfigDO config = dataSourceConfigService.getDataSourceConfig(dataSourceConfigId);
+        Assert.notNull(config, "数据源({}) 不存在！", dataSourceConfigId);
+        // 使用 MyBatis Plus Generator 解析表结构
+        return new DataSourceConfig.Builder(config.getUrl(), config.getUsername(),
+                config.getPassword()).build();
+    }
+
+    @Override
+    public DbType getDbType(Long dataSourceConfigId) {
+        // 使用 MyBatis Plus Generator 解析表结构
+        DataSourceConfig dataSourceConfig = getConfig(dataSourceConfigId);
+        return dataSourceConfig.getDbType();
     }
 
 }

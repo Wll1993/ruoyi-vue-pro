@@ -1,10 +1,12 @@
 package cn.iocoder.yudao.module.infra.service.codegen;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
 import cn.iocoder.yudao.module.infra.controller.admin.codegen.vo.CodegenCreateListReqVO;
+import cn.iocoder.yudao.module.infra.controller.admin.codegen.vo.CodegenMockTypeRespVO;
 import cn.iocoder.yudao.module.infra.controller.admin.codegen.vo.CodegenUpdateReqVO;
 import cn.iocoder.yudao.module.infra.controller.admin.codegen.vo.table.CodegenTablePageReqVO;
 import cn.iocoder.yudao.module.infra.controller.admin.codegen.vo.table.DatabaseTableRespVO;
@@ -12,20 +14,25 @@ import cn.iocoder.yudao.module.infra.dal.dataobject.codegen.CodegenColumnDO;
 import cn.iocoder.yudao.module.infra.dal.dataobject.codegen.CodegenTableDO;
 import cn.iocoder.yudao.module.infra.dal.mysql.codegen.CodegenColumnMapper;
 import cn.iocoder.yudao.module.infra.dal.mysql.codegen.CodegenTableMapper;
-import cn.iocoder.yudao.module.infra.enums.codegen.CodegenSceneEnum;
-import cn.iocoder.yudao.module.infra.enums.codegen.CodegenTemplateTypeEnum;
+import cn.iocoder.yudao.module.infra.enums.codegen.*;
 import cn.iocoder.yudao.module.infra.framework.codegen.config.CodegenProperties;
 import cn.iocoder.yudao.module.infra.service.codegen.inner.CodegenBuilder;
 import cn.iocoder.yudao.module.infra.service.codegen.inner.CodegenEngine;
+import cn.iocoder.yudao.module.infra.service.codegen.inner.DataGeneratorFactory;
+import cn.iocoder.yudao.module.infra.service.codegen.inner.generator.DataGenerator;
+import cn.iocoder.yudao.module.infra.service.codegen.inner.generator.sql.MySQLDialect;
+import cn.iocoder.yudao.module.infra.service.codegen.inner.generator.sql.SQLDialect;
+import cn.iocoder.yudao.module.infra.service.codegen.inner.generator.sql.SQLDialectFactory;
 import cn.iocoder.yudao.module.infra.service.db.DatabaseTableService;
 import cn.iocoder.yudao.module.system.api.user.AdminUserApi;
+import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.generator.config.po.TableField;
 import com.baomidou.mybatisplus.generator.config.po.TableInfo;
 import com.google.common.annotations.VisibleForTesting;
+import javax.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.annotation.Resource;
 import java.util.*;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
@@ -61,6 +68,9 @@ public class CodegenServiceImpl implements CodegenService {
 
     @Resource
     private CodegenProperties codegenProperties;
+
+    @Resource
+    private DataGeneratorFactory dataGeneratorFactory;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -283,6 +293,119 @@ public class CodegenServiceImpl implements CodegenService {
                 codegenTableMapper.selectListByDataSourceConfigId(dataSourceConfigId), CodegenTableDO::getTableName);
         tables.removeIf(table -> existsTables.contains(table.getName()));
         return BeanUtils.toBean(tables, DatabaseTableRespVO.class);
+    }
+
+    @Override
+    public String fakeData(Long tableId, Integer num) {
+        //获取表单信息
+        CodegenTableDO table = getCodegenTable(tableId);
+        //获取列表信息
+        List<CodegenColumnDO> columns = getCodegenColumnListByTableId(tableId);
+        // 初始化结果数据
+        List<Map<String, Object>> dataList = generateData(num, columns);
+        //构建结果
+        return buildInsertSql(table, columns, dataList);
+    }
+
+    @Override
+    public List<String> getMockParamsByMockType(Integer mockType) {
+        if (mockType == null) {
+            return null;
+        }
+        //随机
+        if (mockType.equals(MockTypeEnum.RANDOM.getType())) {
+            return MockParamsRandomTypeEnum.getValues();
+        }
+        return null;
+    }
+
+    @Override
+    public List<CodegenMockTypeRespVO> getMockTypes() {
+        List<DataGenerator> dataGeneratorList = dataGeneratorFactory.getDataGeneratorList();
+        List<CodegenMockTypeRespVO> result = new LinkedList<>();
+        for (DataGenerator dataGenerator : dataGeneratorList) {
+            CodegenMockTypeRespVO vo = new CodegenMockTypeRespVO();
+            vo.setType(dataGenerator.getOrder());
+            vo.setLable(dataGenerator.getName());
+            result.add(vo);
+        }
+        return result.stream().sorted().collect(Collectors.toList());
+    }
+
+    private List<Map<String, Object>> generateData(Integer num, List<CodegenColumnDO> columns) {
+        List<Map<String, Object>> resultList = new ArrayList<>(num);
+        for (int i = 0; i < num; i++) {
+            //每一行用Map记录
+            resultList.add(new HashMap<>());
+        }
+        // 依次生成每一列
+        for (CodegenColumnDO field : columns) {
+            DataGenerator dataGenerator = dataGeneratorFactory.getGenerator(field.getMockType());
+            List<String> mockDataList = dataGenerator.doGenerate(field, num);
+            String fieldName = field.getColumnName();
+            // 填充结果列表
+            if (CollectionUtil.isNotEmpty(mockDataList)) {
+                for (int i = 0; i < num; i++) {
+                    resultList.get(i).put(fieldName, mockDataList.get(i));
+                }
+            }
+        }
+        return resultList;
+    }
+
+
+    /**
+     * 构造插入数据 SQL
+     * e.g. INSERT INTO report (id, content) VALUES (1, '这个有点问题吧');
+     *
+     * @param table    表概要
+     * @param dataList 数据列表
+     * @return 生成的 SQL 列表字符串
+     */
+    public String buildInsertSql(CodegenTableDO table, List<CodegenColumnDO> fieldList, List<Map<String, Object>> dataList) {
+        String name = null;
+        DbType dbType = databaseTableService.getDbType(table.getDataSourceConfigId());
+        if (dbType == null) {
+            return "未知数据库";
+        }
+        if (dbType == DbType.MYSQL) {
+            name = MySQLDialect.class.getName();
+        } else {
+            return "不支持该数据库";
+        }
+
+        SQLDialect sqlDialect = SQLDialectFactory.getDialect(name);
+        // 构造模板
+        String template = "insert into %s (%s) values (%s);";
+        // 构造表名
+        String tableName = sqlDialect.wrapTableName(table.getTableName());
+        // 过滤掉不模拟的字段
+        fieldList = fieldList.stream()
+                .filter(field -> {
+                    MockTypeEnum mockTypeEnum = Optional.ofNullable(MockTypeEnum.getEnumByValue(field.getMockType()))
+                            .orElse(MockTypeEnum.NONE);
+                    return !MockTypeEnum.NONE.equals(mockTypeEnum);
+                })
+                .collect(Collectors.toList());
+        int total = dataList.size();
+        StringBuilder resultStringBuilder = new StringBuilder();
+        for (int i = 0; i < total; i++) {
+            Map<String, Object> dataRow = dataList.get(i);
+            String keyStr = fieldList.stream()
+                    .map(field -> sqlDialect.wrapFieldName(field.getColumnName()))
+                    .collect(Collectors.joining(", "));
+            String valueStr = fieldList.stream()
+                    .map(field -> FieldTypeEnum.getValueStr(field, dataRow.get(field.getColumnName())))
+                    .collect(Collectors.joining(", "));
+            // 填充模板
+            String result = String.format(template, tableName, keyStr, valueStr);
+            resultStringBuilder.append(result);
+            // 最后一个字段后没有换行
+            if (i != total - 1) {
+                resultStringBuilder.append("\n");
+            }
+        }
+        return resultStringBuilder.toString();
     }
 
 }

@@ -1,9 +1,8 @@
 package cn.iocoder.yudao.module.infra.controller.admin.codegen.vo.column;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import javax.validation.constraints.NotNull;
+import lombok.Data;
 
 @Schema(description = "管理后台 - 代码生成字段定义创建/修改 Request VO")
 @Data
@@ -57,6 +56,15 @@ public class CodegenColumnSaveReqVO {
 
     @Schema(description = "数据示例", example = "1024")
     private String example;
+
+    @Schema(description = "数据模拟类型", example = "1")
+    private Integer mockType;
+
+    @Schema(description = "模拟参数", example = "1")
+    private String mockParams;
+
+    @Schema(description = "默认值", example = "默认值")
+    private String defaultValue;
 
     @Schema(description = "是否为 Create 创建操作的字段", requiredMode = Schema.RequiredMode.REQUIRED, example = "true")
     @NotNull(message = "是否为 Create 创建操作的字段不能为空")

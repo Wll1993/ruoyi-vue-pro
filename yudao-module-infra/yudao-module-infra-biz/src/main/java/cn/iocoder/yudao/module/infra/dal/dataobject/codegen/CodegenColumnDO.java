@@ -3,6 +3,7 @@ package cn.iocoder.yudao.module.infra.dal.dataobject.codegen;
 import cn.iocoder.yudao.framework.mybatis.core.dataobject.BaseDO;
 import cn.iocoder.yudao.module.infra.enums.codegen.CodegenColumnHtmlTypeEnum;
 import cn.iocoder.yudao.module.infra.enums.codegen.CodegenColumnListConditionEnum;
+import cn.iocoder.yudao.module.infra.enums.codegen.MockTypeEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -104,6 +105,24 @@ public class CodegenColumnDO extends BaseDO {
      * 数据示例，主要用于生成 Swagger 注解的 example 字段
      */
     private String example;
+
+    // ========== 模拟数据的时候使用 ==========
+    /**
+     * 模拟类型
+     *
+     * 枚举 {@link MockTypeEnum}
+     */
+    private Integer mockType;
+
+    /**
+     * 模拟参数
+     */
+    private String mockParams;
+
+    /**
+     * 默认值
+     */
+    private String defaultValue;
 
     // ========== CRUD 相关字段 ==========
 

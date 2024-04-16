@@ -2,6 +2,7 @@ package cn.iocoder.yudao.module.infra.service.codegen;
 
 import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.module.infra.controller.admin.codegen.vo.CodegenCreateListReqVO;
+import cn.iocoder.yudao.module.infra.controller.admin.codegen.vo.CodegenMockTypeRespVO;
 import cn.iocoder.yudao.module.infra.controller.admin.codegen.vo.CodegenUpdateReqVO;
 import cn.iocoder.yudao.module.infra.controller.admin.codegen.vo.table.CodegenTablePageReqVO;
 import cn.iocoder.yudao.module.infra.controller.admin.codegen.vo.table.DatabaseTableRespVO;
@@ -22,7 +23,7 @@ public interface CodegenService {
      * 基于数据库的表结构，创建代码生成器的表定义
      *
      * @param userId 用户编号
-     * @param reqVO 表信息
+     * @param reqVO  表信息
      * @return 创建的表定义的编号数组
      */
     List<Long> createCodegenList(Long userId, CodegenCreateListReqVO reqVO);
@@ -92,10 +93,33 @@ public interface CodegenService {
      * 获得数据库自带的表定义列表
      *
      * @param dataSourceConfigId 数据源的配置编号
-     * @param name 表名称
-     * @param comment 表描述
+     * @param name               表名称
+     * @param comment            表描述
      * @return 表定义列表
      */
     List<DatabaseTableRespVO> getDatabaseTableList(Long dataSourceConfigId, String name, String comment);
 
+    /**
+     * 伪造假的sql数据，每一条即是一个插入语句
+     *
+     * @param tableId 表单id
+     * @param num     数据量
+     * @return sql集合
+     */
+    String fakeData(Long tableId, Integer num);
+
+    /**
+     * 根据mock类型获取下拉列表
+     *
+     * @param mockType mock类型
+     * @return 下拉列表
+     */
+    List<String> getMockParamsByMockType(Integer mockType);
+
+    /**
+     * 获取模拟类型
+     *
+     * @return 模拟类型
+     */
+    List<CodegenMockTypeRespVO> getMockTypes();
 }

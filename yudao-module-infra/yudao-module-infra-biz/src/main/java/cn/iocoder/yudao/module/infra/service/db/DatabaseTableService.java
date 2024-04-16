@@ -1,5 +1,7 @@
 package cn.iocoder.yudao.module.infra.service.db;
 
+import cn.iocoder.yudao.module.infra.dal.dataobject.db.DataSourceConfigDO;
+import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.generator.config.po.TableInfo;
 
 import java.util.List;
@@ -30,4 +32,10 @@ public interface DatabaseTableService {
      */
     TableInfo getTable(Long dataSourceConfigId, String tableName);
 
+    /**
+     * 获取数据库配置相对应的类型
+     * @param dataSourceConfigId 数据库配置id
+     * @return 数据库类型
+     */
+    DbType getDbType(Long dataSourceConfigId);
 }
