@@ -30,6 +30,13 @@ public interface ${subTable.className}Mapper extends BaseMapperX<${subTable.clas
 
     }
 
+    ## 一对一时生成根据主表查询子表实体
+    #if (!$subTable.subJoinMany)
+    default ${subTable.className}DO selectBy${SubJoinColumnName}(${subJoinColumn.javaType} ${subJoinColumn.javaField}) {
+        return selectOne(${subTable.className}DO::get${SubJoinColumnName}, ${subJoinColumn.javaField});
+    }
+    #end
+
 ## 情况二：非 MASTER_ERP 时，需要列表查询子表
 #else
     #if ( $subTable.subJoinMany)
