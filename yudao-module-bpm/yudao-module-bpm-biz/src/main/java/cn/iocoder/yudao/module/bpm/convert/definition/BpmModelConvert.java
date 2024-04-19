@@ -55,7 +55,7 @@ public interface BpmModelConvert {
         BpmModelMetaInfoRespDTO metaInfo = buildMetaInfo(model);
         BpmModelRespVO modelVO = buildModel0(model, metaInfo, null, null, null, null);
         if (ArrayUtil.isNotEmpty(bpmnBytes)) {
-            modelVO.setBpmnXml(new String(bpmnBytes));
+            modelVO.setBpmnXml(StrUtil.utf8Str(bpmnBytes));
         }
         return modelVO;
     }
