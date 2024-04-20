@@ -192,7 +192,7 @@ public class ProductSpuServiceImpl implements ProductSpuService {
         if (CollUtil.isEmpty(ids)) {
             return Collections.emptyList();
         }
-        return productSpuMapper.selectBatchIds(ids);
+        return productSpuMapper.selectList(Wrappers.<ProductSpuDO>lambdaQuery().in(ProductSpuDO::getId, ids).orderByDesc(ProductSpuDO::getSort));
     }
 
     @Override
